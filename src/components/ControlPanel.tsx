@@ -15,7 +15,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ simulationPhase, canStartSp
 
   const buttonBaseClass = "px-4 py-2 rounded text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
   const enabledClass = "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500";
-  const disabledClass = "bg-gray-400 cursor-not-allowed";
+  const disabledClass = "bg-gray-300 cursor-not-allowed";
 
   return (
     <div className="p-4 space-x-4 border rounded-md shadow-md bg-gray-50">

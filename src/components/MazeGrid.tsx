@@ -32,7 +32,7 @@ const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, 
     if (isOnSpeedRunPath(x, y)) return "bg-blue-300";
     if (isGoalCell(x, y)) return "bg-green-500";
     if (startCell.x === x && startCell.y === y) return "bg-yellow-300";
-    if (isVisited) return "bg-gray-100";
+    if (isVisited) return "bg-gray-400";
     return "bg-white";
   };
 
