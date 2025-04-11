@@ -14,6 +14,7 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
   const [visitedCells, setVisitedCells] = useState<Set<string>>(new Set());
   const [speedRunPath, setSpeedRunPath] = useState<Coordinates[] | null>(null);
   const [canStartSpeedRun, setCanStartSpeedRun] = useState<boolean>(false);
+  const [absoluteShortestPath, setAbsoluteShortestPath] = useState<Coordinates[] | null>(null);
   const simulationTimerIdRef = useRef<NodeJS.Timeout | null>(null);
   const speedRunPathIndexRef = useRef<number>(0);
   const clearSimulationTimer = useCallback(() => {
@@ -41,6 +42,7 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
       setSpeedRunPath(null);
       setSimulationPhase(SimulationPhase.IDLE);
       setCanStartSpeedRun(false);
+      setAbsoluteShortestPath(null);
       speedRunPathIndexRef.current = 0;
     },
     [clearSimulationTimer]
@@ -68,7 +70,7 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
   const checkAndEnableSpeedRun = useCallback(
     (currentKnownMap: Maze | null, currentVisitedCells: Set<string>) => {
       if (!currentKnownMap) return;
-      const mapForCheck = calculateDistancesToGoal(currentKnownMap, currentVisitedCells);
+      const mapForCheck = calculateDistancesToGoal(cloneMaze(currentKnownMap), currentVisitedCells);
       const path = findShortestPath(mapForCheck);
       const pathFound =
         path.length > 0 &&
@@ -153,12 +155,12 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     (currentMap: Maze, currentVisited: Set<string>, currentPhase: SimulationPhase) => {
       console.log("Robot stuck at:", robotPosition);
       let mapToRecalculate = cloneMaze(currentMap);
-      console.log(`Stuck during ${currentPhase}, forcing recalculation...`);
-      const allCells = getAllCoordStrings(mapToRecalculate);
+      console.log(`Stuck during ${currentPhase}, forcing recalculation using all cells...`);
+      const allKnownCells = getAllCoordStrings(mapToRecalculate);
       if (currentPhase === SimulationPhase.EXPLORATION) {
-        mapToRecalculate = calculateDistancesToGoal(mapToRecalculate, allCells);
+        mapToRecalculate = calculateDistancesToGoal(mapToRecalculate, allKnownCells);
       } else if (currentPhase === SimulationPhase.RETURN) {
-        mapToRecalculate = calculateDistancesToStart(mapToRecalculate, allCells);
+        mapToRecalculate = calculateDistancesToStart(mapToRecalculate, allKnownCells);
       }
       setKnownMap(mapToRecalculate);
       if (isExplorationComplete(mapToRecalculate, currentVisited)) {
@@ -166,7 +168,7 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
         setSimulationPhase(SimulationPhase.IDLE);
         checkAndEnableSpeedRun(mapToRecalculate, currentVisited);
       } else {
-        console.log("Recalculation done, but exploration not yet complete.");
+        console.log("Recalculation done, but exploration not yet complete. Robot should attempt move again.");
       }
     },
     [robotPosition, getAllCoordStrings, calculateDistancesToGoal, calculateDistancesToStart, isExplorationComplete, checkAndEnableSpeedRun]
@@ -189,8 +191,8 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     let currentMapToUse = mapAfterDiscovery;
     if (wallsChanged) {
       console.log("Walls updated during exploration, recalculating distances to goal...");
-      const allCells = getAllCoordStrings(currentMapToUse);
-      currentMapToUse = calculateDistancesToGoal(currentMapToUse, allCells);
+      const allKnownCells = getAllCoordStrings(currentMapToUse);
+      currentMapToUse = calculateDistancesToGoal(currentMapToUse, allKnownCells);
     }
     const bestMove = findBestMove(currentMapToUse, robotPosition);
     setKnownMap(currentMapToUse);
@@ -229,8 +231,8 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     let currentMapToUse = mapAfterDiscovery;
     if (wallsChanged) {
       console.log("Walls updated during return, recalculating distances to start...");
-      const allCells = getAllCoordStrings(currentMapToUse);
-      currentMapToUse = calculateDistancesToStart(currentMapToUse, allCells);
+      const allKnownCells = getAllCoordStrings(currentMapToUse);
+      currentMapToUse = calculateDistancesToStart(currentMapToUse, allKnownCells);
     }
     const bestMove = findBestMove(currentMapToUse, robotPosition);
     setKnownMap(currentMapToUse);
@@ -256,11 +258,12 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     if (!speedRunPath || !robotPosition) {
       console.warn("Speed run step called with invalid state. Setting phase to IDLE.");
       setSimulationPhase(SimulationPhase.IDLE);
+      setAbsoluteShortestPath(null);
       return;
     }
     const currentIndex = speedRunPathIndexRef.current;
     if (currentIndex >= speedRunPath.length) {
-      console.log("Speed run path completed.");
+      console.log("Speed run path completed (index check).");
       setSimulationPhase(SimulationPhase.IDLE);
       return;
     }
@@ -283,37 +286,58 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     setVisitedCells(new Set([startPosStr]));
     setSpeedRunPath(null);
     setCanStartSpeedRun(false);
+    setAbsoluteShortestPath(null);
     speedRunPathIndexRef.current = 0;
-    const allCells = getAllCoordStrings(knownMap);
-    const mapForExploration = calculateDistancesToGoal(knownMap, allCells);
+    const allKnownCells = getAllCoordStrings(knownMap);
+    const mapForExploration = calculateDistancesToGoal(knownMap, allKnownCells);
     setKnownMap(mapForExploration);
     setSimulationPhase(SimulationPhase.EXPLORATION);
   }, [simulationPhase, knownMap, robotPosition, getAllCoordStrings, calculateDistancesToGoal]);
   const handleStartSpeedRun = useCallback(() => {
-    if (simulationPhase !== SimulationPhase.IDLE || !canStartSpeedRun || !knownMap || !visitedCells) {
-      console.warn("Speed run start conditions not met.");
+    if (simulationPhase !== SimulationPhase.IDLE || !canStartSpeedRun || !knownMap || !visitedCells || !actualMaze) {
+      console.warn("Speed run start conditions not met (phase, canStart, maps, visited).", {
+        phase: simulationPhase,
+        canStart: canStartSpeedRun,
+        hasKnown: !!knownMap,
+        hasVisited: !!visitedCells,
+        hasActual: !!actualMaze,
+      });
       return;
     }
     console.log("Starting speed run...");
-    const mapForPathfinding = calculateDistancesToGoal(knownMap, visitedCells);
-    const path = findShortestPath(mapForPathfinding);
+    console.log("Calculating absolute shortest path...");
+    const allActualCells = getAllCoordStrings(actualMaze);
+    const tempActualMap = calculateDistancesToGoal(cloneMaze(actualMaze), allActualCells);
+    const truePath = findShortestPath(tempActualMap);
+    if (truePath.length > 0 && truePath[0].x === tempActualMap.startCell.x && truePath[0].y === tempActualMap.startCell.y) {
+      setAbsoluteShortestPath(truePath);
+      console.log(`Absolute shortest path calculated (${truePath.length} steps).`);
+    } else {
+      console.error("Failed to calculate a valid absolute shortest path.");
+      setAbsoluteShortestPath(null);
+    }
+    console.log("Calculating robot's speed run path (using known/visited cells)...");
+    const mapForPathfinding = calculateDistancesToGoal(cloneMaze(knownMap), visitedCells);
+    const robotPath = findShortestPath(mapForPathfinding);
     if (
-      path.length === 0 ||
-      path[0].x !== mapForPathfinding.startCell.x ||
-      path[0].y !== mapForPathfinding.startCell.y ||
-      !mapForPathfinding.goalArea.some((g) => g.x === path[path.length - 1].x && g.y === path[path.length - 1].y)
+      robotPath.length === 0 ||
+      robotPath[0].x !== mapForPathfinding.startCell.x ||
+      robotPath[0].y !== mapForPathfinding.startCell.y ||
+      !mapForPathfinding.goalArea.some((g) => g.x === robotPath[robotPath.length - 1].x && g.y === robotPath[robotPath.length - 1].y)
     ) {
-      console.error("Speed run failed: Path check passed previously but pathfinding failed now or path invalid.");
+      console.error("Speed run failed: Path check passed previously but pathfinding failed now or path invalid based on visited cells.");
       setSimulationPhase(SimulationPhase.IDLE);
       setCanStartSpeedRun(false);
+      setAbsoluteShortestPath(null);
       return;
     }
     const startPos = { ...mapForPathfinding.startCell };
     setRobotPosition(startPos);
-    setSpeedRunPath(path);
-    speedRunPathIndexRef.current = 0;
+    setSpeedRunPath(robotPath);
+    speedRunPathIndexRef.current = 1;
     setSimulationPhase(SimulationPhase.SPEED_RUN);
-  }, [simulationPhase, canStartSpeedRun, knownMap, visitedCells, calculateDistancesToGoal]);
+    console.log(`Robot's speed run path calculated (${robotPath.length} steps). Starting run.`);
+  }, [simulationPhase, canStartSpeedRun, knownMap, visitedCells, actualMaze, getAllCoordStrings, calculateDistancesToGoal]);
   const handleReset = useCallback(() => {
     console.log("Reset button clicked.");
     if (actualMaze) {
@@ -323,13 +347,14 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     }
   }, [actualMaze, resetSimulationState]);
   useEffect(() => {
-    if (initialActualMaze) {
-      setActualMaze(initialActualMaze);
+    if (initialActualMaze && !actualMaze) {
+      console.log("Initial actual maze data received, initializing simulation state.");
+      setActualMaze(cloneMaze(initialActualMaze));
       resetSimulationState(initialActualMaze);
-    } else {
+    } else if (!initialActualMaze) {
       console.log("Waiting for initial actual maze data...");
     }
-  }, [initialActualMaze, resetSimulationState]);
+  }, [initialActualMaze, actualMaze, resetSimulationState]);
   useEffect(() => {
     clearSimulationTimer();
     let stepFunction: (() => void) | null = null;
@@ -359,6 +384,7 @@ export function useMicromouseSimulation(initialActualMaze: Maze | null) {
     visitedCells,
     speedRunPath,
     canStartSpeedRun,
+    absoluteShortestPath,
     actualMaze,
     handleStartExploration,
     handleStartSpeedRun,

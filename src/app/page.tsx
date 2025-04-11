@@ -22,6 +22,7 @@ export default function HomePage() {
     visitedCells,
     speedRunPath,
     canStartSpeedRun,
+    absoluteShortestPath,
     handleStartExploration,
     handleStartSpeedRun,
     handleReset,
@@ -43,6 +44,7 @@ export default function HomePage() {
           robotPosition={robotPosition}
           visitedCells={visitedCells}
           speedRunPath={simulationPhase === SimulationPhase.SPEED_RUN ? speedRunPath : null}
+          absoluteShortestPath={simulationPhase === SimulationPhase.SPEED_RUN ? absoluteShortestPath : null}
         />
       </div>
       <div>
