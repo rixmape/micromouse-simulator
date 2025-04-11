@@ -60,7 +60,8 @@ export function simulationReducer(state: SimulationState = initialSimulationStat
       };
     case "RESET_SIMULATION":
       const { initialMaze } = action.payload;
-      if (!initialMaze?.cells) {
+      if (!initialMaze?.cells || !initialMaze.startCell) {
+        console.error("Reset failed: Invalid initial maze provided.");
         return initialSimulationState;
       }
       const initialKnown = createInitialKnownMap(initialMaze);

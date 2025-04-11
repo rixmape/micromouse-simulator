@@ -28,15 +28,31 @@ interface UseSimulationCoreProps {
   initialWidth: number;
   initialHeight: number;
   initialFactor: number;
+  initialStartX: number;
+  initialStartY: number;
+  initialGoalCenterX: number;
+  initialGoalCenterY: number;
 }
 
 interface ResetOptions {
   width?: number;
   height?: number;
   factor?: number;
+  startX?: number;
+  startY?: number;
+  goalCenterX?: number;
+  goalCenterY?: number;
 }
 
-export function useSimulationCore({ initialWidth, initialHeight, initialFactor }: UseSimulationCoreProps) {
+export function useSimulationCore({
+  initialWidth,
+  initialHeight,
+  initialFactor,
+  initialStartX,
+  initialStartY,
+  initialGoalCenterX,
+  initialGoalCenterY,
+}: UseSimulationCoreProps) {
   const [state, dispatch] = useReducer(simulationReducer, initialSimulationState);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [currentSimDelay, setCurrentSimDelay] = useState<number>(DEFAULT_SIMULATION_DELAY);
@@ -59,21 +75,45 @@ export function useSimulationCore({ initialWidth, initialHeight, initialFactor }
       const width = options?.width ?? state.actualMaze?.width ?? initialWidth;
       const height = options?.height ?? state.actualMaze?.height ?? initialHeight;
       const factor = options?.factor ?? initialFactor;
+      const startX = options?.startX ?? initialStartX;
+      const startY = options?.startY ?? initialStartY;
+      const goalCenterX = options?.goalCenterX ?? initialGoalCenterX;
+      const goalCenterY = options?.goalCenterY ?? initialGoalCenterY;
       try {
-        const mazeToResetWith = options || !state.actualMaze ? createGeneratedMaze(width, height, factor) : state.actualMaze;
+        const mazeToResetWith = createGeneratedMaze(width, height, factor, startX, startY, goalCenterX, goalCenterY);
         dispatch(Actions.resetSimulation(mazeToResetWith));
-      } catch {
-        const fallbackMaze = createGeneratedMaze(initialWidth, initialHeight, initialFactor);
+      } catch (error) {
+        console.error("Error creating maze during reset:", error);
+        const fallbackMaze = createGeneratedMaze(
+          initialWidth,
+          initialHeight,
+          initialFactor,
+          initialStartX,
+          initialStartY,
+          initialGoalCenterX,
+          initialGoalCenterY
+        );
         dispatch(Actions.resetSimulation(fallbackMaze));
       } finally {
         setIsInitializing(false);
       }
     },
-    [clearSimulationTimer, state.actualMaze, initialWidth, initialHeight, initialFactor]
+    [
+      clearSimulationTimer,
+      state.actualMaze?.width,
+      state.actualMaze?.height,
+      initialWidth,
+      initialHeight,
+      initialFactor,
+      initialStartX,
+      initialStartY,
+      initialGoalCenterX,
+      initialGoalCenterY,
+    ]
   );
   useEffect(() => {
     handleReset();
-  }, []);
+  }, [handleReset]);
   useEffect(() => {
     clearSimulationTimer();
     if (state.simulationPhase !== SimulationPhase.IDLE && state.actualMaze) {
@@ -113,6 +153,7 @@ export function useSimulationCore({ initialWidth, initialHeight, initialFactor }
       robotPath[0].y === startPos.y &&
       mapForPathfinding.goalArea.some((g) => g.x === robotPath[robotPath.length - 1].x && g.y === robotPath[robotPath.length - 1].y);
     if (!isPathValid) {
+      console.warn("Speed run path calculation failed or is invalid.");
       dispatch(Actions.setCanStartSpeedRun(false));
       dispatch(Actions.setAbsoluteShortestPath(null));
       return;

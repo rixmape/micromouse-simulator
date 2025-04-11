@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect } from "react";
 import ControlPanel from "../components/ControlPanel";
 import Infobar from "../components/Infobar";
@@ -9,20 +10,44 @@ import { useSimulationParameters } from "../hooks/useSimulationParameters";
 import { SimulationPhase } from "../types";
 
 export default function HomePage() {
-  const { mazeWidth, setMazeWidth, mazeHeight, setMazeHeight, wallsToRemoveFactor, setWallsToRemoveFactor, simulationDelay, setSimulationDelay } =
-    useSimulationParameters();
+  const {
+    mazeWidth,
+    setMazeWidth,
+    mazeHeight,
+    setMazeHeight,
+    wallsToRemoveFactor,
+    setWallsToRemoveFactor,
+    simulationDelay,
+    setSimulationDelay,
+    startX,
+    setStartX,
+    startY,
+    setStartY,
+    goalCenterX,
+    setGoalCenterX,
+    goalCenterY,
+    setGoalCenterY,
+  } = useSimulationParameters();
   const { simulationState, isInitializing, handleStartExploration, handleStartSpeedRun, handleReset, setSimulationStepDelay } = useSimulationCore({
     initialWidth: mazeWidth,
     initialHeight: mazeHeight,
     initialFactor: wallsToRemoveFactor,
+    initialStartX: startX,
+    initialStartY: startY,
+    initialGoalCenterX: goalCenterX,
+    initialGoalCenterY: goalCenterY,
   });
   useEffect(() => {
     handleReset({
       width: mazeWidth,
       height: mazeHeight,
       factor: wallsToRemoveFactor,
+      startX: startX,
+      startY: startY,
+      goalCenterX: goalCenterX,
+      goalCenterY: goalCenterY,
     });
-  }, [mazeWidth, mazeHeight, wallsToRemoveFactor]);
+  }, [mazeWidth, mazeHeight, wallsToRemoveFactor, startX, startY, goalCenterX, goalCenterY, handleReset]);
   useEffect(() => {
     setSimulationStepDelay(simulationDelay);
   }, [simulationDelay, setSimulationStepDelay]);
@@ -32,6 +57,10 @@ export default function HomePage() {
         width: mazeWidth,
         height: mazeHeight,
         factor: wallsToRemoveFactor,
+        startX: startX,
+        startY: startY,
+        goalCenterX: goalCenterX,
+        goalCenterY: goalCenterY,
       });
     }
   };
@@ -50,10 +79,18 @@ export default function HomePage() {
         currentHeight={mazeHeight}
         currentWallsFactor={wallsToRemoveFactor}
         currentDelay={simulationDelay}
+        startX={startX}
+        startY={startY}
+        goalCenterX={goalCenterX}
+        goalCenterY={goalCenterY}
         onWidthChange={setMazeWidth}
         onHeightChange={setMazeHeight}
         onWallsFactorChange={setWallsToRemoveFactor}
         onDelayChange={setSimulationDelay}
+        onStartXChange={setStartX}
+        onStartYChange={setStartY}
+        onGoalCenterXChange={setGoalCenterX}
+        onGoalCenterYChange={setGoalCenterY}
         onRandomize={handleRandomize}
         simulationPhase={simulationState.simulationPhase}
       />
@@ -79,6 +116,10 @@ export default function HomePage() {
                 width: mazeWidth,
                 height: mazeHeight,
                 factor: wallsToRemoveFactor,
+                startX: startX,
+                startY: startY,
+                goalCenterX: goalCenterX,
+                goalCenterY: goalCenterY,
               })
             }
           />

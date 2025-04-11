@@ -11,12 +11,30 @@ export function cloneMaze(maze: Maze): Maze {
         if (sourceRow[x]) {
           row.push({ ...sourceRow[x] });
         } else {
-          row.push({} as Cell);
+          row.push({
+            x,
+            y,
+            north: true,
+            east: true,
+            south: true,
+            west: true,
+            distance: Infinity,
+            visited: false,
+          } as Cell);
         }
       }
     } else {
       for (let x = 0; x < maze.width; x++) {
-        row.push({} as Cell);
+        row.push({
+          x,
+          y,
+          north: true,
+          east: true,
+          south: true,
+          west: true,
+          distance: Infinity,
+          visited: false,
+        } as Cell);
       }
     }
     newCells.push(row);
@@ -80,6 +98,7 @@ export function createInitialKnownMap(actualMaze: Maze): Maze {
     startKnown.east = startActual.east;
     startKnown.south = startActual.south;
     startKnown.west = startActual.west;
+    startKnown.visited = true;
   }
   const knownMap: Maze = {
     width,
