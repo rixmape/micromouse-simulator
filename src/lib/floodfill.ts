@@ -1,9 +1,9 @@
 import { Coordinates, Maze } from "../types";
+import { coordsToString, getValidNeighbors, hasWallTowardsNeighbor, isValidCoord } from "./mazeUtils";
 
 export function calculateFloodFillDistances(maze: Maze, allowedCells: Set<string>): void {
   const queue: Coordinates[] = [];
   const { width, height, cells, goalArea } = maze;
-
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (cells[y]?.[x]) {
@@ -11,11 +11,9 @@ export function calculateFloodFillDistances(maze: Maze, allowedCells: Set<string
       }
     }
   }
-
   goalArea.forEach((coord) => {
-    const coordStr = `${coord.x}-${coord.y}`;
-
-    if (coord.x >= 0 && coord.x < width && coord.y >= 0 && coord.y < height && cells[coord.y]?.[coord.x] && allowedCells.has(coordStr)) {
+    const coordStr = coordsToString(coord);
+    if (isValidCoord(coord, width, height) && cells[coord.y]?.[coord.x] && allowedCells.has(coordStr)) {
       const cell = cells[coord.y][coord.x];
       if (cell.distance === Infinity) {
         cell.distance = 0;
@@ -23,37 +21,19 @@ export function calculateFloodFillDistances(maze: Maze, allowedCells: Set<string
       }
     }
   });
-
-  const neighbors = [
-    { dx: 0, dy: 1, wall: "north", neighborWall: "south" },
-    { dx: 1, dy: 0, wall: "east", neighborWall: "west" },
-    { dx: 0, dy: -1, wall: "south", neighborWall: "north" },
-    { dx: -1, dy: 0, wall: "west", neighborWall: "east" },
-  ] as const;
-
   let head = 0;
   while (head < queue.length) {
     const currentCoord = queue[head++];
-
-    if (!cells[currentCoord.y]?.[currentCoord.x]) continue;
-    const currentCell = cells[currentCoord.y][currentCoord.x];
+    const currentCell = cells[currentCoord.y]?.[currentCoord.x];
+    if (!currentCell) continue;
     const currentDistance = currentCell.distance;
-
-    for (const move of neighbors) {
-      const nx = currentCoord.x + move.dx;
-      const ny = currentCoord.y + move.dy;
-      const neighborCoordStr = `${nx}-${ny}`;
-
-      if (nx < 0 || nx >= width || ny < 0 || ny >= height || !cells[ny]?.[nx] || !allowedCells.has(neighborCoordStr)) {
-        continue;
-      }
-
-      const neighborCell = cells[ny][nx];
-      const wallExists = currentCell[move.wall] || neighborCell[move.neighborWall];
-
-      if (!wallExists && neighborCell.distance === Infinity) {
+    const validNeighbors = getValidNeighbors(maze, currentCoord);
+    for (const { neighborCoords, moveDef } of validNeighbors) {
+      const neighborCoordStr = coordsToString(neighborCoords);
+      const neighborCell = cells[neighborCoords.y]?.[neighborCoords.x];
+      if (neighborCell && allowedCells.has(neighborCoordStr) && !hasWallTowardsNeighbor(maze, currentCoord, moveDef) && neighborCell.distance === Infinity) {
         neighborCell.distance = currentDistance + 1;
-        queue.push({ x: nx, y: ny });
+        queue.push(neighborCoords);
       }
     }
   }
@@ -61,57 +41,31 @@ export function calculateFloodFillDistances(maze: Maze, allowedCells: Set<string
 
 export function findShortestPath(maze: Maze): Coordinates[] {
   const path: Coordinates[] = [];
-  let currentCoord = { ...maze.startCell };
-  const { width, height, cells, goalArea } = maze;
-
-  if (
-    currentCoord.x < 0 ||
-    currentCoord.x >= width ||
-    currentCoord.y < 0 ||
-    currentCoord.y >= height ||
-    !cells[currentCoord.y]?.[currentCoord.x] ||
-    cells[currentCoord.y][currentCoord.x].distance === Infinity
-  ) {
-    console.error("Start cell is unreachable or invalid based on calculated distances.");
+  const { width, height, cells, startCell, goalArea } = maze;
+  if (!isValidCoord(startCell, width, height) || !cells[startCell.y]?.[startCell.x] || cells[startCell.y][startCell.x].distance === Infinity) {
+    console.error("Start cell is invalid or unreachable based on calculated distances.");
     return [];
   }
-
+  let currentCoord = { ...startCell };
   path.push(currentCoord);
-
-  const neighbors = [
-    { dx: 0, dy: 1, wall: "north", neighborWall: "south" },
-    { dx: 1, dy: 0, wall: "east", neighborWall: "west" },
-    { dx: 0, dy: -1, wall: "south", neighborWall: "north" },
-    { dx: -1, dy: 0, wall: "west", neighborWall: "east" },
-  ] as const;
-
+  const maxPathLength = width * height * 2;
+  let pathLength = 0;
   while (!goalArea.some((gc) => gc.x === currentCoord.x && gc.y === currentCoord.y)) {
-    if (!cells[currentCoord.y]?.[currentCoord.x]) {
+    const currentCell = cells[currentCoord.y]?.[currentCoord.x];
+    if (!currentCell) {
       console.error("Pathfinding entered invalid cell:", currentCoord);
       return [];
     }
-
-    const currentCell = cells[currentCoord.y][currentCoord.x];
     let bestNeighbor: Coordinates | null = null;
     let minDistance = currentCell.distance;
-
-    for (const move of neighbors) {
-      const nx = currentCoord.x + move.dx;
-      const ny = currentCoord.y + move.dy;
-
-      if (nx < 0 || nx >= width || ny < 0 || ny >= height || !cells[ny]?.[nx]) {
-        continue;
-      }
-
-      const neighborCell = cells[ny][nx];
-      const wallExists = currentCell[move.wall] || neighborCell[move.neighborWall];
-
-      if (!wallExists && neighborCell.distance < minDistance) {
+    const validNeighbors = getValidNeighbors(maze, currentCoord);
+    for (const { neighborCoords, moveDef } of validNeighbors) {
+      const neighborCell = cells[neighborCoords.y]?.[neighborCoords.x];
+      if (neighborCell && !hasWallTowardsNeighbor(maze, currentCoord, moveDef) && neighborCell.distance < minDistance) {
         minDistance = neighborCell.distance;
-        bestNeighbor = { x: nx, y: ny };
+        bestNeighbor = neighborCoords;
       }
     }
-
     if (bestNeighbor) {
       currentCoord = bestNeighbor;
       path.push(currentCoord);
@@ -119,12 +73,11 @@ export function findShortestPath(maze: Maze): Coordinates[] {
       console.warn("Pathfinding stuck (no neighbor with lower distance):", currentCoord, "Min Distance:", minDistance);
       return [];
     }
-
-    if (path.length > width * height * 2) {
+    pathLength++;
+    if (pathLength > maxPathLength) {
       console.error("Pathfinding exceeded maximum possible length. Aborting.");
       return [];
     }
   }
-
   return path;
 }

@@ -3,11 +3,18 @@ export interface Coordinates {
   y: number;
 }
 
+export enum Direction {
+  North = "north",
+  East = "east",
+  South = "south",
+  West = "west",
+}
+
 export interface Cell extends Coordinates {
-  north: boolean;
-  east: boolean;
-  south: boolean;
-  west: boolean;
+  [Direction.North]: boolean;
+  [Direction.East]: boolean;
+  [Direction.South]: boolean;
+  [Direction.West]: boolean;
   distance: number;
   visited: boolean;
 }
@@ -20,21 +27,21 @@ export interface Maze {
   goalArea: Coordinates[];
 }
 
-export interface RobotState {
-  position: Coordinates;
-  knownMap: Maze;
+export interface NeighborDefinition {
+  dx: number;
+  dy: number;
+  wall: Direction;
+  neighborWall: Direction;
 }
 
 export enum SimulationPhase {
   IDLE = "IDLE",
   EXPLORATION = "EXPLORATION",
-  RETURNING_TO_START = "RETURNING_TO_START",
+  RETURN = "RETURN",
   SPEED_RUN = "SPEED_RUN",
 }
 
-export enum Direction {
-  NORTH = "NORTH",
-  EAST = "EAST",
-  SOUTH = "SOUTH",
-  WEST = "WEST",
+export interface RobotState {
+  position: Coordinates;
+  knownMap: Maze;
 }
