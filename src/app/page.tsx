@@ -1,7 +1,7 @@
 "use client";
-
 import { useEffect } from "react";
 import ControlPanel from "../components/ControlPanel";
+import Infobar from "../components/Infobar";
 import MazeGrid from "../components/MazeGrid";
 import Sidebar from "../components/Sidebar";
 import { useSimulationCore } from "../hooks/useSimulationCore";
@@ -44,7 +44,7 @@ export default function HomePage() {
     );
   }
   return (
-    <main className="flex flex-col lg:flex-row min-h-screen bg-gray-100 p-4 gap-4">
+    <main className="flex flex-row min-h-screen bg-gray-100 p-4 gap-4">
       <Sidebar
         currentWidth={mazeWidth}
         currentHeight={mazeHeight}
@@ -87,6 +87,7 @@ export default function HomePage() {
           Phase: <span className="font-bold">{simulationState.simulationPhase}</span>
         </div>
       </div>
+      <Infobar projectDescription="A simulation of the Micromouse maze-solving robot." />
     </main>
   );
 }
