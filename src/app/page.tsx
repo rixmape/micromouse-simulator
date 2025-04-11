@@ -26,6 +26,15 @@ export default function HomePage() {
   useEffect(() => {
     setSimulationStepDelay(simulationDelay);
   }, [simulationDelay, setSimulationStepDelay]);
+  const handleRandomize = () => {
+    if (simulationState.simulationPhase === SimulationPhase.IDLE) {
+      handleReset({
+        width: mazeWidth,
+        height: mazeHeight,
+        factor: wallsToRemoveFactor,
+      });
+    }
+  };
   if (isInitializing || !simulationState.actualMaze || !simulationState.knownMap || !simulationState.robotPosition) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
@@ -45,6 +54,7 @@ export default function HomePage() {
         onHeightChange={setMazeHeight}
         onWallsFactorChange={setWallsToRemoveFactor}
         onDelayChange={setSimulationDelay}
+        onRandomize={handleRandomize}
         simulationPhase={simulationState.simulationPhase}
       />
       <div className="flex flex-col items-center flex-grow">
@@ -64,7 +74,13 @@ export default function HomePage() {
             canStartSpeedRun={simulationState.canStartSpeedRun}
             onStartExploration={handleStartExploration}
             onStartSpeedRun={handleStartSpeedRun}
-            onReset={handleReset}
+            onReset={() =>
+              handleReset({
+                width: mazeWidth,
+                height: mazeHeight,
+                factor: wallsToRemoveFactor,
+              })
+            }
           />
         </div>
         <div className="mt-4 text-lg font-medium">

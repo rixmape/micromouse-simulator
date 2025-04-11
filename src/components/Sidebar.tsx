@@ -10,6 +10,7 @@ interface SidebarProps {
   onHeightChange: (newHeight: number) => void;
   onWallsFactorChange: (newFactor: number) => void;
   onDelayChange: (newDelay: number) => void;
+  onRandomize: () => void;
   simulationPhase: SimulationPhase;
 }
 
@@ -22,9 +23,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   onHeightChange,
   onWallsFactorChange,
   onDelayChange,
+  onRandomize,
   simulationPhase,
 }) => {
   const isDisabled = simulationPhase !== SimulationPhase.IDLE;
+  const buttonBaseClass = "px-4 py-2 rounded text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const enabledClass = "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500";
+  const disabledClass = "bg-gray-300 cursor-not-allowed";
   const handleNumberChange = (event: React.ChangeEvent<HTMLInputElement>, callback: (value: number) => void) => {
     const value = parseInt(event.target.value, 10);
     if (!isNaN(value)) {
@@ -107,6 +112,9 @@ const Sidebar: React.FC<SidebarProps> = ({
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer hover:bg-gray-300"
         />
       </div>
+      <button onClick={onRandomize} disabled={isDisabled} className={`${buttonBaseClass} ${isDisabled ? disabledClass : enabledClass} w-full mt-2`}>
+        Randomize Walls
+      </button>
       <p className="text-xs text-gray-500 pt-2">Note: Changing Width, Height, or Extra Paths will reset the simulation.</p>
     </div>
   );
