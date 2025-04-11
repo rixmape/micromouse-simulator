@@ -1,13 +1,12 @@
 import { Cell, Coordinates, Maze } from "../types";
 
-const MAZE_WIDTH = 16;
-const MAZE_HEIGHT = 16;
-
+const MAZE_WIDTH = 32;
+const MAZE_HEIGHT = 32;
 const START_X = 0;
 const START_Y = 0;
-
 const GOAL_CENTER_X = Math.floor(MAZE_WIDTH / 2) - 1;
 const GOAL_CENTER_Y = Math.floor(MAZE_HEIGHT / 2) - 1;
+const WALLS_TO_REMOVE = 30;
 
 function shuffleArray<T>(array: T[]): T[] {
   for (let i = array.length - 1; i > 0; i--) {
@@ -19,7 +18,6 @@ function shuffleArray<T>(array: T[]): T[] {
 
 function carvePassages(cx: number, cy: number, cells: Cell[][], visited: boolean[][], width: number, height: number): void {
   visited[cy][cx] = true;
-
   const neighbors = shuffleArray([
     { nx: cx, ny: cy + 1, wall: "north", neighborWall: "south" },
     { nx: cx + 1, ny: cy, wall: "east", neighborWall: "west" },
@@ -29,15 +27,12 @@ function carvePassages(cx: number, cy: number, cells: Cell[][], visited: boolean
 
   for (const neighbor of neighbors) {
     const { nx, ny, wall, neighborWall } = neighbor;
-
-    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-      if (!visited[ny][nx]) {
-        // @ts-ignore - Allow indexing wall keys
-        cells[cy][cx][wall] = false;
-        // @ts-ignore - Allow indexing wall keys
-        cells[ny][nx][neighborWall] = false;
-        carvePassages(nx, ny, cells, visited, width, height);
-      }
+    if (nx >= 0 && nx < width && ny >= 0 && ny < height && !visited[ny][nx]) {
+      // @ts-ignore - Indexing wall keys
+      cells[cy][cx][wall] = false;
+      // @ts-ignore - Indexing wall keys
+      cells[ny][nx][neighborWall] = false;
+      carvePassages(nx, ny, cells, visited, width, height);
     }
   }
 }
@@ -66,58 +61,45 @@ export function createDefaultMaze(): Maze {
     visited.push(visitedRow);
   }
 
-  for (let y = 0; y < MAZE_HEIGHT; y++) {
-    cells[y][0].west = true;
-    cells[y][MAZE_WIDTH - 1].east = true;
+  carvePassages(START_X, START_Y, cells, visited, MAZE_WIDTH, MAZE_HEIGHT);
 
-    if (MAZE_WIDTH > 1) {
-      cells[y][0].east = false;
-      cells[y][MAZE_WIDTH - 2].east = false;
-    }
-  }
-
-  for (let x = 0; x < MAZE_WIDTH; x++) {
-    cells[0][x].south = true;
-    cells[MAZE_HEIGHT - 1][x].north = true;
-
-    if (MAZE_HEIGHT > 1) {
-      cells[0][x].north = false;
-      cells[MAZE_HEIGHT - 2][x].north = false;
-    }
-  }
+  const internalWalls: { x: number; y: number; wall: "north" | "east" }[] = [];
 
   for (let y = 0; y < MAZE_HEIGHT; y++) {
     for (let x = 0; x < MAZE_WIDTH; x++) {
-      cells[y][x].north = true;
-      cells[y][x].east = true;
-      cells[y][x].south = true;
-      cells[y][x].west = true;
-      cells[y][x].distance = Infinity;
-      cells[y][x].visited = false;
-      visited[y][x] = false;
+      if (y < MAZE_HEIGHT - 1 && cells[y][x].north) {
+        internalWalls.push({ x, y, wall: "north" });
+      }
+
+      if (x < MAZE_WIDTH - 1 && cells[y][x].east) {
+        internalWalls.push({ x, y, wall: "east" });
+      }
     }
   }
 
-  carvePassages(START_X, START_Y, cells, visited, MAZE_WIDTH, MAZE_HEIGHT);
+  shuffleArray(internalWalls);
+
+  const wallsToRemoveCount = Math.min(WALLS_TO_REMOVE, internalWalls.length);
+  for (let i = 0; i < wallsToRemoveCount; i++) {
+    const wallToRemove = internalWalls[i];
+    const { x, y, wall } = wallToRemove;
+
+    if (wall === "north" && cells[y][x].north) {
+      cells[y][x].north = false;
+      cells[y + 1][x].south = false;
+    } else if (wall === "east" && cells[y][x].east) {
+      cells[y][x].east = false;
+      cells[y][x + 1].west = false;
+    }
+  }
 
   const startCell: Coordinates = { x: START_X, y: START_Y };
-
   const goalArea: Coordinates[] = [
     { x: GOAL_CENTER_X, y: GOAL_CENTER_Y },
     { x: GOAL_CENTER_X + 1, y: GOAL_CENTER_Y },
     { x: GOAL_CENTER_X, y: GOAL_CENTER_Y + 1 },
     { x: GOAL_CENTER_X + 1, y: GOAL_CENTER_Y + 1 },
   ];
-
-  goalArea.forEach((coord) => {
-    if (coord.x < 0 || coord.x >= MAZE_WIDTH || coord.y < 0 || coord.y >= MAZE_HEIGHT) {
-      throw new Error(`Goal coordinate (${coord.x}, ${coord.y}) is outside maze bounds.`);
-    }
-  });
-
-  if (startCell.x < 0 || startCell.x >= MAZE_WIDTH || startCell.y < 0 || startCell.y >= MAZE_HEIGHT) {
-    throw new Error(`Start coordinate (${startCell.x}, ${startCell.y}) is outside maze bounds.`);
-  }
 
   for (let y = 0; y < MAZE_HEIGHT; y++) {
     cells[y][0].west = true;
@@ -145,14 +127,14 @@ export function createInitialKnownMap(actualMaze: Maze): Maze {
   for (let y = 0; y < height; y++) {
     const row: Cell[] = [];
     for (let x = 0; x < width; x++) {
-      const actualCell = actualMaze.cells[y][x];
       row.push({
         x,
         y,
-        north: y === height - 1 ? actualCell.north : false,
-        east: x === width - 1 ? actualCell.east : false,
-        south: y === 0 ? actualCell.south : false,
-        west: x === 0 ? actualCell.west : false,
+
+        north: y === height - 1 ? actualMaze.cells[y][x].north : false,
+        east: x === width - 1 ? actualMaze.cells[y][x].east : false,
+        south: y === 0 ? actualMaze.cells[y][x].south : false,
+        west: x === 0 ? actualMaze.cells[y][x].west : false,
         distance: Infinity,
         visited: false,
       });
@@ -166,6 +148,16 @@ export function createInitialKnownMap(actualMaze: Maze): Maze {
   startKnown.east = startActual.east;
   startKnown.south = startActual.south;
   startKnown.west = startActual.west;
+
+  for (let y = 0; y < height; y++) {
+    knownCells[y][0].west = true;
+    knownCells[y][width - 1].east = true;
+  }
+
+  for (let x = 0; x < width; x++) {
+    knownCells[0][x].south = true;
+    knownCells[height - 1][x].north = true;
+  }
 
   return {
     width,

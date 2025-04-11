@@ -61,7 +61,7 @@ const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, 
               return (
                 <div
                   key={`cell-${x}-${y}`}
-                  className={`w-8 h-8 relative flex items-center justify-center text-xs text-gray-600 ${wallClasses} ${bgColor}`}
+                  className={`w-6 h-6 relative flex items-center justify-center text-xs text-gray-600 ${wallClasses} ${bgColor}`}
                   title={`(${x},${y}) Dist: ${cell.distance === Infinity ? "Inf" : cell.distance}`}
                 ></div>
               );
