@@ -34,12 +34,11 @@ const Infobar: React.FC<InfobarProps> = ({ projectDescription }) => {
     { colorClass: "bg-purple-600", label: "Absolute Shortest Path", isDot: true },
   ];
   return (
-    <aside className="w-64 h-full bg-white p-4 border-l border-gray-300 shadow-sm flex-shrink-0 space-y-6">
+    <aside className="w-64 h-full p-4 flex-shrink-0 space-y-6 border border-gray-200 rounded-md shadow-md bg-white">
       <div>
         <h2 className="text-lg font-semibold text-gray-800 mb-2 border-b pb-1">About</h2>
         <p className="text-sm text-gray-600">{projectDescription}</p>
       </div>
-
       <div>
         <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">Maze Legend</h2>
         {legendItems.map((item) => (

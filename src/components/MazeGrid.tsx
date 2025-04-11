@@ -55,7 +55,7 @@ const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, 
                 return (
                   <div
                     key={`cell-empty-${x}-${y}`}
-                    className="w-6 h-6 bg-pink-100 border border-dashed border-pink-400 flex items-center justify-center text-xs font-bold text-pink-600"
+                    className="w-6 h-6 bg-pink-100 border border-dashed border-pink-400 flex items-center justify-center text-xs font-semibold text-pink-600"
                     title={`Invalid Cell (${x},${y})`}
                   >
                     !

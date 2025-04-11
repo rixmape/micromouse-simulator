@@ -33,7 +33,7 @@ const RangeInput: React.FC<RangeInputProps> = React.memo(({ id, label, min, max,
   return (
     <div className="space-y-1">
       <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-        {label}: <span className="font-bold">{displayValue}</span>
+        {label}: <span className="font-medium">{displayValue}</span>
         {unit}
       </label>
       <input
@@ -83,7 +83,7 @@ const NumberInput: React.FC<NumberInputProps> = React.memo(({ id, label, min, ma
   return (
     <div className="space-y-1">
       <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-        {label}: <span className="font-bold">{value < 0 ? "Auto" : value}</span>
+        {label}: <span className="font-medium">{value < 0 ? "Auto" : value}</span>
       </label>
       <input
         type="number"
@@ -125,9 +125,8 @@ const Sidebar: React.FC<SidebarProps> = ({ simulationPhase, onRandomize }) => {
   } = useSimulationParamsStore();
   const isControlDisabled = simulationPhase !== SimulationPhase.IDLE;
   return (
-    <div className="w-full lg:w-64 p-4 space-y-4 border border-gray-300 rounded-md shadow-md bg-white">
+    <div className="w-full lg:w-64 p-4 space-y-4 border border-gray-200 rounded-md shadow-md bg-white">
       <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Controls</h2>
-      {/* Inputs now use state and setters from Zustand store */}
       <RangeInput
         id="mazeWidth"
         label="Maze Width"

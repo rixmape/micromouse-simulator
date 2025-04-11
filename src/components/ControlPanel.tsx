@@ -19,7 +19,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const isIdle = simulationPhase === SimulationPhase.IDLE;
   const isSpeedRunEnabled = isIdle && canStartSpeedRun;
   return (
-    <div className="p-4 space-x-4 border rounded-md shadow-md bg-gray-50">
+    <div className="p-4 space-x-4 border border-gray-200 rounded-md shadow-md bg-white">
       <button
         onClick={onStartExploration}
         disabled={!isIdle}

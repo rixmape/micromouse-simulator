@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+body {
+  font-family: "Lexend";
+}
+
+.btn-base {
+  @apply bg-blue-800 text-white font-medium py-2 px-4 rounded;
+}
+
+.btn-disabled {
+  @apply bg-gray-400 text-gray-200 cursor-not-allowed;
+}
