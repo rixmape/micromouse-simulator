@@ -1,6 +1,7 @@
+
 import { coordsToString } from "../../lib/mazeUtils/coordinateUtils";
 import { createInitialKnownMap } from "../../lib/mazeUtils/mazeStructureUtils";
-import type { SimulationAction, SimulationState } from "../../types";
+import type { Maze, SimulationAction, SimulationState, CoordinateString } from "../../types";
 import { SimulationPhase } from "../../types";
 
 export const initialSimulationState: SimulationState = {
@@ -8,13 +9,16 @@ export const initialSimulationState: SimulationState = {
   actualMaze: null,
   knownMap: null,
   robotPosition: null,
-  visitedCells: new Set<string>(),
+  visitedCells: new Set<CoordinateString>(),
   speedRunPath: null,
   canStartSpeedRun: false,
   absoluteShortestPath: null,
 };
 
-export function simulationReducer(state: SimulationState = initialSimulationState, action: SimulationAction): SimulationState {
+export function simulationReducer(
+    state: SimulationState = initialSimulationState,
+    action: SimulationAction
+): SimulationState {
   switch (action.type) {
     case "SET_PHASE":
       return {
@@ -38,7 +42,7 @@ export function simulationReducer(state: SimulationState = initialSimulationStat
       };
     case "ADD_VISITED_CELL":
       const newVisitedCells = new Set(state.visitedCells);
-      newVisitedCells.add(action.payload);
+      newVisitedCells.add(action.payload as CoordinateString);
       return {
         ...state,
         visitedCells: newVisitedCells,
@@ -61,18 +65,18 @@ export function simulationReducer(state: SimulationState = initialSimulationStat
     case "RESET_SIMULATION":
       const { initialMaze } = action.payload;
       if (!initialMaze?.cells || !initialMaze.startCell) {
-        console.error("Reset failed: Invalid initial maze provided.");
+        console.error("Reset failed: Invalid initial maze provided in action payload.");
         return initialSimulationState;
       }
       const initialKnown = createInitialKnownMap(initialMaze);
       const startPos = initialMaze.startCell;
-      const startPosStr = coordsToString(startPos);
+      const startPosStr: CoordinateString = coordsToString(startPos);
       return {
         simulationPhase: SimulationPhase.IDLE,
         actualMaze: initialMaze,
         knownMap: initialKnown,
         robotPosition: { ...startPos },
-        visitedCells: new Set([startPosStr]),
+        visitedCells: new Set<CoordinateString>([startPosStr]),
         speedRunPath: null,
         canStartSpeedRun: false,
         absoluteShortestPath: null,

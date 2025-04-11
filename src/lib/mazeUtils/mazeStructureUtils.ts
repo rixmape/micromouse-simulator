@@ -8,8 +8,9 @@ export function cloneMaze(maze: Maze): Maze {
     const sourceRow = maze.cells[y];
     if (sourceRow) {
       for (let x = 0; x < maze.width; x++) {
-        if (sourceRow[x]) {
-          row.push({ ...sourceRow[x] });
+        const sourceCell = sourceRow[x];
+        if (sourceCell) {
+          row.push({ ...sourceCell });
         } else {
           row.push({
             x,
@@ -50,30 +51,38 @@ export function cloneMaze(maze: Maze): Maze {
 export function setBoundaryWalls(maze: Maze): void {
   const { width, height, cells } = maze;
   if (height > 0) {
-    for (let x = 0; x < width; x++) {
-      if (cells[height - 1]?.[x]) {
-        cells[height - 1][x].north = true;
+    const topRow = cells[height - 1];
+    if (topRow) {
+      for (let x = 0; x < width; x++) {
+        if (topRow[x]) {
+          topRow[x].north = true;
+        }
       }
     }
   }
   if (height > 0) {
-    for (let x = 0; x < width; x++) {
-      if (cells[0]?.[x]) {
-        cells[0][x].south = true;
+    const bottomRow = cells[0];
+    if (bottomRow) {
+      for (let x = 0; x < width; x++) {
+        if (bottomRow[x]) {
+          bottomRow[x].south = true;
+        }
       }
     }
   }
   if (width > 0) {
     for (let y = 0; y < height; y++) {
-      if (cells[y]?.[0]) {
-        cells[y][0].west = true;
+      const cell = cells[y]?.[0];
+      if (cell) {
+        cell.west = true;
       }
     }
   }
   if (width > 0) {
     for (let y = 0; y < height; y++) {
-      if (cells[y]?.[width - 1]) {
-        cells[y][width - 1].east = true;
+      const cell = cells[y]?.[width - 1];
+      if (cell) {
+        cell.east = true;
       }
     }
   }
@@ -91,14 +100,16 @@ export function createInitialKnownMap(actualMaze: Maze): Maze {
     distance: Infinity,
     visited: false,
   }));
-  const startActual = actualMaze.cells[startCell.y]?.[startCell.x];
-  const startKnown = knownCells[startCell.y]?.[startCell.x];
-  if (startActual && startKnown) {
-    startKnown.north = startActual.north;
-    startKnown.east = startActual.east;
-    startKnown.south = startActual.south;
-    startKnown.west = startActual.west;
-    startKnown.visited = true;
+  const actualStartCell = actualMaze.cells[startCell.y]?.[startCell.x];
+  const knownStartCell = knownCells[startCell.y]?.[startCell.x];
+  if (actualStartCell && knownStartCell) {
+    knownStartCell.north = actualStartCell.north;
+    knownStartCell.east = actualStartCell.east;
+    knownStartCell.south = actualStartCell.south;
+    knownStartCell.west = actualStartCell.west;
+    knownStartCell.visited = true;
+  } else {
+    console.error("Start cell coordinates are invalid for the given maze dimensions.");
   }
   const knownMap: Maze = {
     width,

@@ -1,67 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
 import ControlPanel from "../components/ControlPanel";
 import Infobar from "../components/Infobar";
 import MazeGrid from "../components/MazeGrid";
 import Sidebar from "../components/Sidebar";
 import { useSimulationCore } from "../hooks/useSimulationCore";
-import { useSimulationParameters } from "../hooks/useSimulationParameters";
 import { SimulationPhase } from "../types";
 
 export default function HomePage() {
   const {
-    mazeWidth,
-    setMazeWidth,
-    mazeHeight,
-    setMazeHeight,
-    wallsToRemoveFactor,
-    setWallsToRemoveFactor,
-    simulationDelay,
-    setSimulationDelay,
-    startX,
-    setStartX,
-    startY,
-    setStartY,
-    goalCenterX,
-    setGoalCenterX,
-    goalCenterY,
-    setGoalCenterY,
-  } = useSimulationParameters();
-  const { simulationState, isInitializing, handleStartExploration, handleStartSpeedRun, handleReset, setSimulationStepDelay } = useSimulationCore({
-    initialWidth: mazeWidth,
-    initialHeight: mazeHeight,
-    initialFactor: wallsToRemoveFactor,
-    initialStartX: startX,
-    initialStartY: startY,
-    initialGoalCenterX: goalCenterX,
-    initialGoalCenterY: goalCenterY,
-  });
-  useEffect(() => {
-    handleReset({
-      width: mazeWidth,
-      height: mazeHeight,
-      factor: wallsToRemoveFactor,
-      startX: startX,
-      startY: startY,
-      goalCenterX: goalCenterX,
-      goalCenterY: goalCenterY,
-    });
-  }, [mazeWidth, mazeHeight, wallsToRemoveFactor, startX, startY, goalCenterX, goalCenterY, handleReset]);
-  useEffect(() => {
-    setSimulationStepDelay(simulationDelay);
-  }, [simulationDelay, setSimulationStepDelay]);
+    simulationState,
+    isInitializing,
+    handleStartExploration,
+    handleStartSpeedRun,
+    handleReset,
+  } = useSimulationCore();
   const handleRandomize = () => {
     if (simulationState.simulationPhase === SimulationPhase.IDLE) {
-      handleReset({
-        width: mazeWidth,
-        height: mazeHeight,
-        factor: wallsToRemoveFactor,
-        startX: startX,
-        startY: startY,
-        goalCenterX: goalCenterX,
-        goalCenterY: goalCenterY,
-      });
+      handleReset();
     }
   };
   if (isInitializing || !simulationState.actualMaze || !simulationState.knownMap || !simulationState.robotPosition) {
@@ -75,24 +31,8 @@ export default function HomePage() {
   return (
     <main className="flex flex-row min-h-screen bg-gray-100 p-4 gap-4">
       <Sidebar
-        currentWidth={mazeWidth}
-        currentHeight={mazeHeight}
-        currentWallsFactor={wallsToRemoveFactor}
-        currentDelay={simulationDelay}
-        startX={startX}
-        startY={startY}
-        goalCenterX={goalCenterX}
-        goalCenterY={goalCenterY}
-        onWidthChange={setMazeWidth}
-        onHeightChange={setMazeHeight}
-        onWallsFactorChange={setWallsToRemoveFactor}
-        onDelayChange={setSimulationDelay}
-        onStartXChange={setStartX}
-        onStartYChange={setStartY}
-        onGoalCenterXChange={setGoalCenterX}
-        onGoalCenterYChange={setGoalCenterY}
-        onRandomize={handleRandomize}
         simulationPhase={simulationState.simulationPhase}
+        onRandomize={handleRandomize}
       />
       <div className="flex flex-col items-center flex-grow">
         <h1 className="text-3xl font-bold mb-6">Micromouse Simulator</h1>
@@ -111,17 +51,7 @@ export default function HomePage() {
             canStartSpeedRun={simulationState.canStartSpeedRun}
             onStartExploration={handleStartExploration}
             onStartSpeedRun={handleStartSpeedRun}
-            onReset={() =>
-              handleReset({
-                width: mazeWidth,
-                height: mazeHeight,
-                factor: wallsToRemoveFactor,
-                startX: startX,
-                startY: startY,
-                goalCenterX: goalCenterX,
-                goalCenterY: goalCenterY,
-              })
-            }
+            onReset={handleReset}
           />
         </div>
         <div className="mt-4 text-lg font-medium">

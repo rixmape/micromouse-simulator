@@ -6,7 +6,11 @@ export function findShortestPath(maze: Maze): Coordinates[] {
   const path: Coordinates[] = [];
   const { width, height, cells, startCell, goalArea } = maze;
   const startCellData = cells[startCell.y]?.[startCell.x];
-  if (!isValidCoord(startCell, width, height) || !startCellData || startCellData.distance === Infinity) {
+  if (
+    !isValidCoord(startCell, width, height) ||
+    !startCellData ||
+    startCellData.distance === Infinity
+  ) {
     return [];
   }
   let currentCoord = { ...startCell };
@@ -16,14 +20,19 @@ export function findShortestPath(maze: Maze): Coordinates[] {
   while (!goalArea.some((gc) => gc.x === currentCoord.x && gc.y === currentCoord.y)) {
     const currentCell = cells[currentCoord.y]?.[currentCoord.x];
     if (!currentCell) {
-      return [];
+        console.error("Pathfinding error: Current cell became invalid.", currentCoord);
+        return [];
     }
     let bestNeighbor: Coordinates | null = null;
     let minDistance = currentCell.distance;
     const validNeighbors = getValidNeighbors(maze, currentCoord);
     for (const { neighborCoords, moveDef } of validNeighbors) {
       const neighborCell = cells[neighborCoords.y]?.[neighborCoords.x];
-      if (neighborCell && !hasWallTowardsNeighbor(maze, currentCoord, moveDef) && neighborCell.distance < minDistance) {
+      if (
+        neighborCell &&
+        !hasWallTowardsNeighbor(maze, currentCoord, moveDef) &&
+        neighborCell.distance < minDistance
+      ) {
         minDistance = neighborCell.distance;
         bestNeighbor = neighborCoords;
       }
@@ -32,10 +41,12 @@ export function findShortestPath(maze: Maze): Coordinates[] {
       currentCoord = bestNeighbor;
       path.push(currentCoord);
     } else {
+      console.warn("Pathfinding stuck: No downhill neighbor found at", currentCoord, "Distance:", currentCell.distance);
       return [];
     }
     pathLength++;
     if (pathLength > maxPathLength) {
+      console.error("Pathfinding error: Maximum path length exceeded. Possible loop or error in distances.");
       return [];
     }
   }

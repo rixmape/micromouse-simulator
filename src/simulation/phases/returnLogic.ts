@@ -1,88 +1,74 @@
 import type { Dispatch } from "react";
-import { calculateFloodFillDistances } from "../../algorithms/pathfinding/floodfill";
-import { coordsToString } from "../../lib/mazeUtils/coordinateUtils";
-import { getValidNeighbors, hasWallTowardsNeighbor } from "../../lib/mazeUtils/mazeNavigationUtils";
-import { cloneMaze } from "../../lib/mazeUtils/mazeStructureUtils";
-import type { Coordinates, Maze, SimulationAction, SimulationState } from "../../types";
+import { coordsToString, getAllCoordStrings } from "../../lib/mazeUtils/coordinateUtils";
+import { calculateDistancesToStart, findBestMove } from "../../lib/mazeUtils/pathfindingUtils";
+import type { Coordinates, CoordinateString, Maze, SimulationAction, SimulationState } from "../../types";
 import { SimulationPhase } from "../../types";
 import { addVisitedCell, setCanStartSpeedRun, setSimulationPhase, updateKnownMap, updateRobotPosition } from "../actions";
 import { canStartSpeedRun } from "../validation";
 import { performWallDiscovery } from "../wallDiscovery";
 
-function getAllCoordStrings(map: Maze | null): Set<string> {
-  if (!map) return new Set();
-  const coords = new Set<string>();
-  map.cells.forEach((row, y) => row.forEach((_, x) => coords.add(coordsToString({ x, y }))));
-  return coords;
-}
-
-function calculateDistancesToStart(map: Maze, allowedCells: Set<string>): Maze {
-  const mapCopy = cloneMaze(map);
-  if (!mapCopy.goalArea?.length) return mapCopy;
-  const originalStart = { ...mapCopy.startCell };
-  const originalGoalArea = mapCopy.goalArea.map((g) => ({ ...g }));
-  mapCopy.startCell = { ...originalGoalArea[0] };
-  mapCopy.goalArea = [originalStart];
-  calculateFloodFillDistances(mapCopy, allowedCells);
-  mapCopy.startCell = originalStart;
-  mapCopy.goalArea = originalGoalArea;
-  return mapCopy;
-}
-
-function findBestMove(currentMap: Maze, currentPos: Coordinates): Coordinates | null {
-  const currentCell = currentMap.cells[currentPos.y]?.[currentPos.x];
-  if (!currentCell || currentCell.distance === Infinity) return null;
-  let bestNeighbor: Coordinates | null = null;
-  let minDistance = currentCell.distance;
-  const neighbors = getValidNeighbors(currentMap, currentPos);
-  for (const { neighborCoords, moveDef } of neighbors) {
-    if (!hasWallTowardsNeighbor(currentMap, currentPos, moveDef)) {
-      const neighborCell = currentMap.cells[neighborCoords.y]?.[neighborCoords.x];
-      if (neighborCell && neighborCell.distance < minDistance) {
-        minDistance = neighborCell.distance;
-        bestNeighbor = neighborCoords;
-      }
+function _discoverWallsAndUpdateMap(
+    state: SimulationState,
+    actualMaze: Maze,
+    distanceCalcFn: (map: Maze, cells: Set<CoordinateString>) => Maze
+): { mapToUse: Maze; needsDispatch: boolean } {
+    const { knownMap, robotPosition, visitedCells } = state;
+    if (!knownMap || !robotPosition || !actualMaze) {
+        return { mapToUse: knownMap || actualMaze, needsDispatch: false };
     }
-  }
-  return bestNeighbor;
+    const { updatedMap: mapAfterDiscovery, wallsChanged } = performWallDiscovery(
+        robotPosition,
+        knownMap,
+        actualMaze
+    );
+    let currentMapToUse = mapAfterDiscovery;
+    let needsDispatch = false;
+    if (wallsChanged) {
+        currentMapToUse = distanceCalcFn(currentMapToUse, visitedCells);
+    } else {
+        needsDispatch = true;
+    }
+    return { mapToUse: currentMapToUse, needsDispatch: !wallsChanged };
 }
 
 export function runReturnStep(state: SimulationState, dispatch: Dispatch<SimulationAction>, actualMaze: Maze | null): void {
-  const { knownMap, robotPosition, visitedCells } = state;
-  if (!knownMap || !robotPosition || !actualMaze) {
-    dispatch(setSimulationPhase(SimulationPhase.IDLE));
-    return;
-  }
-  const { startCell } = knownMap;
-  if (robotPosition.x === startCell.x && robotPosition.y === startCell.y) {
-    const speedRunPossible = canStartSpeedRun(knownMap, visitedCells);
-    dispatch(setCanStartSpeedRun(speedRunPossible));
-    dispatch(setSimulationPhase(SimulationPhase.IDLE));
-    return;
-  }
-  const { updatedMap: mapAfterDiscovery, wallsChanged } = performWallDiscovery(robotPosition, knownMap, actualMaze);
-  let currentMapToUse = mapAfterDiscovery;
-  let mapUpdatedDispatchNeeded = false;
-  if (wallsChanged) {
-    const allKnownCells = getAllCoordStrings(currentMapToUse);
-    currentMapToUse = calculateDistancesToStart(currentMapToUse, allKnownCells);
-    dispatch(updateKnownMap(currentMapToUse));
-  } else {
-    mapUpdatedDispatchNeeded = true;
-  }
-  const bestMove = findBestMove(currentMapToUse, robotPosition);
-  if (bestMove) {
-    dispatch(updateRobotPosition(bestMove));
-    dispatch(addVisitedCell(coordsToString(bestMove)));
-    if (mapUpdatedDispatchNeeded) {
-      dispatch(updateKnownMap(currentMapToUse));
+    const { knownMap, robotPosition, visitedCells } = state;
+    if (!knownMap || !robotPosition || !actualMaze) {
+        dispatch(setSimulationPhase(SimulationPhase.IDLE));
+        console.error("Return step failed: Missing state (knownMap, robotPosition, or actualMaze).");
+        return;
     }
-  } else {
-    const allKnownCells = getAllCoordStrings(currentMapToUse);
-    const mapToRecalculate = calculateDistancesToStart(currentMapToUse, allKnownCells);
-    dispatch(updateKnownMap(mapToRecalculate));
-    const speedRunPossible = canStartSpeedRun(mapToRecalculate, visitedCells);
-    dispatch(setCanStartSpeedRun(speedRunPossible));
-    dispatch(setSimulationPhase(SimulationPhase.IDLE));
-  }
+    const { startCell } = knownMap;
+    if (robotPosition.x === startCell.x && robotPosition.y === startCell.y) {
+        console.log("Start cell reached. Return phase complete.");
+        const speedRunPossible = canStartSpeedRun(knownMap, visitedCells);
+        dispatch(setCanStartSpeedRun(speedRunPossible));
+        dispatch(setSimulationPhase(SimulationPhase.IDLE));
+        return;
+    }
+    const { mapToUse, needsDispatch } = _discoverWallsAndUpdateMap(
+        state,
+        actualMaze,
+        calculateDistancesToStart
+    );
+    if (!needsDispatch) {
+        dispatch(updateKnownMap(mapToUse));
+    }
+    const bestMove = findBestMove(mapToUse, robotPosition);
+    if (bestMove) {
+        dispatch(updateRobotPosition(bestMove));
+        dispatch(addVisitedCell(coordsToString(bestMove)));
+        if (needsDispatch) {
+            dispatch(updateKnownMap(mapToUse));
+        }
+    } else {
+        console.warn("Return phase stuck at:", robotPosition, ". Recalculating distances comprehensively.");
+        const allKnownCells = getAllCoordStrings(mapToUse);
+        const mapToRecalculate = calculateDistancesToStart(mapToUse, allKnownCells);
+        dispatch(updateKnownMap(mapToRecalculate));
+        const speedRunPossible = canStartSpeedRun(mapToRecalculate, visitedCells);
+        dispatch(setCanStartSpeedRun(speedRunPossible));
+        console.error("Ending return phase as robot is stuck even after recalculation.");
+        dispatch(setSimulationPhase(SimulationPhase.IDLE));
+    }
 }

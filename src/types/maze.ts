@@ -23,3 +23,13 @@ export interface Maze {
   startCell: Coordinates;
   goalArea: Coordinates[];
 }
+
+export interface MazeCreationOptions {
+  width: number;
+  height: number;
+  wallsToRemoveFactor: number;
+  startX: number;
+  startY: number;
+  goalCenterX: number;
+  goalCenterY: number;
+}

@@ -1,14 +1,32 @@
 import React from "react";
 import { coordsToString } from "../lib/mazeUtils/coordinateUtils";
-import type { Cell, Coordinates, Maze } from "../types";
+import type { Cell, Coordinates, CoordinateString, Maze } from "../types";
 import { Direction } from "../types";
 
 interface MazeGridProps {
   maze: Maze | null;
   robotPosition: Coordinates | null;
-  visitedCells: Set<string>;
+  visitedCells: Set<CoordinateString>;
   speedRunPath: Coordinates[] | null;
   absoluteShortestPath: Coordinates[] | null;
+}
+
+function getCellBackgroundColor(
+  cell: Cell,
+  robotPosition: Coordinates | null,
+  visitedCells: Set<CoordinateString>,
+  speedRunPath: Coordinates[] | null,
+  startCell: Coordinates,
+  goalArea: Coordinates[]
+): string {
+  const { x, y } = cell;
+  const coordStr = coordsToString({ x, y });
+  if (robotPosition?.x === x && robotPosition?.y === y) return "bg-red-500";
+  if (speedRunPath?.some((coord) => coord.x === x && coord.y === y)) return "bg-blue-300";
+  if (goalArea.some((coord) => coord.x === x && coord.y === y)) return "bg-green-500";
+  if (startCell.x === x && startCell.y === y) return "bg-yellow-300";
+  if (visitedCells.has(coordStr)) return "bg-gray-400";
+  return "bg-white";
 }
 
 const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, speedRunPath, absoluteShortestPath }) => {
@@ -16,26 +34,8 @@ const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, 
     return <div className="w-96 h-96 bg-gray-200 flex items-center justify-center text-gray-500">Loading Maze...</div>;
   }
   const { width, height, cells, startCell, goalArea } = maze;
-  const isGoalCell = (x: number, y: number): boolean => {
-    return goalArea.some((coord) => coord.x === x && coord.y === y);
-  };
-  const isOnSpeedRunPath = (x: number, y: number): boolean => {
-    return speedRunPath?.some((coord) => coord.x === x && coord.y === y) ?? false;
-  };
   const isOnAbsoluteShortestPath = (x: number, y: number): boolean => {
     return absoluteShortestPath?.some((coord) => coord.x === x && coord.y === y) ?? false;
-  };
-  const getCellBackgroundColor = (cell: Cell): string => {
-    const { x, y } = cell;
-    const isRobotHere = robotPosition?.x === x && robotPosition?.y === y;
-    const isVisited = visitedCells.has(coordsToString({ x, y }));
-    const onSpeedRunPath = isOnSpeedRunPath(x, y);
-    if (isRobotHere) return "bg-red-500";
-    if (onSpeedRunPath) return "bg-blue-300";
-    if (isGoalCell(x, y)) return "bg-green-500";
-    if (startCell.x === x && startCell.y === y) return "bg-yellow-300";
-    if (isVisited) return "bg-gray-400";
-    return "bg-white";
   };
   return (
     <div
@@ -68,7 +68,7 @@ const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, 
                 cell[Direction.South] ? "border-b-2 border-b-black" : "border-b border-b-gray-300",
                 cell[Direction.West] ? "border-l-2 border-l-black" : "border-l border-l-gray-300",
               ].join(" ");
-              const bgColor = getCellBackgroundColor(cell);
+              const bgColor = getCellBackgroundColor(cell, robotPosition, visitedCells, speedRunPath, startCell, goalArea);
               const displayDistance = cell.distance === Infinity ? "Inf" : cell.distance;
               const onAbsPath = isOnAbsoluteShortestPath(x, y);
               return (

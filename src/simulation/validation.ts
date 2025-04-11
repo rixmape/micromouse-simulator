@@ -1,11 +1,12 @@
+
 import { calculateFloodFillDistances } from "../algorithms/pathfinding/floodfill";
 import { findShortestPath } from "../algorithms/pathfinding/shortestPath";
 import { coordsToString, stringToCoords } from "../lib/mazeUtils/coordinateUtils";
 import { getValidNeighbors, hasWallTowardsNeighbor } from "../lib/mazeUtils/mazeNavigationUtils";
 import { cloneMaze } from "../lib/mazeUtils/mazeStructureUtils";
-import type { Maze } from "../types";
+import type { Maze, CoordinateString, Coordinates } from "../types";
 
-export function canStartSpeedRun(knownMap: Maze | null, visitedCells: Set<string>): boolean {
+export function canStartSpeedRun(knownMap: Maze | null, visitedCells: Set<CoordinateString>): boolean {
   if (!knownMap) {
     return false;
   }
@@ -16,11 +17,13 @@ export function canStartSpeedRun(knownMap: Maze | null, visitedCells: Set<string
     path.length > 0 &&
     path[0].x === mapForCheck.startCell.x &&
     path[0].y === mapForCheck.startCell.y &&
-    mapForCheck.goalArea.some((g) => g.x === path[path.length - 1].x && g.y === path[path.length - 1].y);
+    mapForCheck.goalArea.some(
+      (g) => g.x === path[path.length - 1].x && g.y === path[path.length - 1].y
+    );
   return pathFound;
 }
 
-export function isExplorationComplete(knownMap: Maze | null, visitedCells: Set<string>): boolean {
+export function isExplorationComplete(knownMap: Maze | null, visitedCells: Set<CoordinateString>): boolean {
   if (!knownMap) {
     return true;
   }

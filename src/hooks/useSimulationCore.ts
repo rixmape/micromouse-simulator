@@ -1,37 +1,36 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { createGeneratedMaze } from "../algorithms/mazeGeneration/mazeGenerator";
-import { calculateFloodFillDistances } from "../algorithms/pathfinding/floodfill";
-import { findShortestPath } from "../algorithms/pathfinding/shortestPath";
-import { coordsToString } from "../lib/mazeUtils/coordinateUtils";
-import { cloneMaze } from "../lib/mazeUtils/mazeStructureUtils";
+import { calculateAndValidateSpeedRunPath, calculateDistancesToGoal } from "../lib/mazeUtils/pathfindingUtils";
 import * as Actions from "../simulation/actions";
 import { DEFAULT_SIMULATION_DELAY } from "../simulation/simulationConstants";
 import { runSimulationStep } from "../simulation/simulationManager";
 import { initialSimulationState, simulationReducer } from "../simulation/state/simulationReducer";
-import type { Maze } from "../types";
+import { useSimulationParamsStore } from "../store/simulationParamsStore";
+import type { MazeCreationOptions } from "../types";
 import { SimulationPhase } from "../types";
 
-function getAllCoordStrings(map: Maze | null): Set<string> {
-  if (!map) return new Set();
-  const coords = new Set<string>();
-  map.cells.forEach((row, y) => row.forEach((_, x) => coords.add(coordsToString({ x, y }))));
-  return coords;
-}
-
-function calculateDistancesToGoal(map: Maze, allowedCells: Set<string>): Maze {
-  const mapCopy = cloneMaze(map);
-  calculateFloodFillDistances(mapCopy, allowedCells);
-  return mapCopy;
-}
-
-interface UseSimulationCoreProps {
-  initialWidth: number;
-  initialHeight: number;
-  initialFactor: number;
-  initialStartX: number;
-  initialStartY: number;
-  initialGoalCenterX: number;
-  initialGoalCenterY: number;
+function useSimulationLoop(phase: SimulationPhase, stepFn: () => void, initialDelay: number = DEFAULT_SIMULATION_DELAY) {
+  const [currentSimDelay, setCurrentSimDelay] = useState<number>(initialDelay);
+  const simulationTimerIdRef = useRef<NodeJS.Timeout | null>(null);
+  const clearSimulationTimer = useCallback(() => {
+    if (simulationTimerIdRef.current) {
+      clearTimeout(simulationTimerIdRef.current);
+      simulationTimerIdRef.current = null;
+    }
+  }, []);
+  useEffect(() => {
+    clearSimulationTimer();
+    if (phase !== SimulationPhase.IDLE) {
+      simulationTimerIdRef.current = setTimeout(() => {
+        stepFn();
+      }, currentSimDelay);
+    }
+    return clearSimulationTimer;
+  }, [phase, currentSimDelay, stepFn, clearSimulationTimer]);
+  const setSimulationStepDelay = useCallback((delay: number) => {
+    setCurrentSimDelay(Math.max(0, delay));
+  }, []);
+  return { setSimulationStepDelay, clearSimulationTimer };
 }
 
 interface ResetOptions {
@@ -44,121 +43,82 @@ interface ResetOptions {
   goalCenterY?: number;
 }
 
-export function useSimulationCore({
-  initialWidth,
-  initialHeight,
-  initialFactor,
-  initialStartX,
-  initialStartY,
-  initialGoalCenterX,
-  initialGoalCenterY,
-}: UseSimulationCoreProps) {
+export function useSimulationCore() {
+  const { mazeWidth, mazeHeight, wallsToRemoveFactor, startX, startY, goalCenterX, goalCenterY, simulationDelay } = useSimulationParamsStore();
   const [state, dispatch] = useReducer(simulationReducer, initialSimulationState);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
-  const [currentSimDelay, setCurrentSimDelay] = useState<number>(DEFAULT_SIMULATION_DELAY);
-  const simulationTimerIdRef = useRef<NodeJS.Timeout | null>(null);
   const speedRunPathIndexRef = useRef<number>(0);
-  const setSimulationStepDelay = useCallback((delay: number) => {
-    setCurrentSimDelay(Math.max(0, delay));
-  }, []);
-  const clearSimulationTimer = useCallback(() => {
-    if (simulationTimerIdRef.current) {
-      clearTimeout(simulationTimerIdRef.current);
-      simulationTimerIdRef.current = null;
-    }
-  }, []);
+  const stepFn = useCallback(() => {
+    runSimulationStep(state, dispatch, state.actualMaze, speedRunPathIndexRef);
+  }, [state, dispatch]);
+  const { setSimulationStepDelay, clearSimulationTimer } = useSimulationLoop(state.simulationPhase, stepFn, simulationDelay);
+  useEffect(() => {
+    setSimulationStepDelay(simulationDelay);
+  }, [simulationDelay, setSimulationStepDelay]);
   const handleReset = useCallback(
     (options?: ResetOptions) => {
+      console.log("Resetting simulation with options:", options);
       clearSimulationTimer();
       speedRunPathIndexRef.current = 0;
       setIsInitializing(true);
-      const width = options?.width ?? state.actualMaze?.width ?? initialWidth;
-      const height = options?.height ?? state.actualMaze?.height ?? initialHeight;
-      const factor = options?.factor ?? initialFactor;
-      const startX = options?.startX ?? initialStartX;
-      const startY = options?.startY ?? initialStartY;
-      const goalCenterX = options?.goalCenterX ?? initialGoalCenterX;
-      const goalCenterY = options?.goalCenterY ?? initialGoalCenterY;
+      const width = options?.width ?? mazeWidth;
+      const height = options?.height ?? mazeHeight;
+      const factor = options?.factor ?? wallsToRemoveFactor;
+      const startXParam = options?.startX ?? startX;
+      const startYParam = options?.startY ?? startY;
+      const goalCenterXParam = options?.goalCenterX ?? goalCenterX;
+      const goalCenterYParam = options?.goalCenterY ?? goalCenterY;
+      const mazeOptions: MazeCreationOptions = {
+        width,
+        height,
+        wallsToRemoveFactor: factor,
+        startX: startXParam,
+        startY: startYParam,
+        goalCenterX: goalCenterXParam,
+        goalCenterY: goalCenterYParam,
+      };
       try {
-        const mazeToResetWith = createGeneratedMaze(width, height, factor, startX, startY, goalCenterX, goalCenterY);
+        const mazeToResetWith = createGeneratedMaze(mazeOptions);
         dispatch(Actions.resetSimulation(mazeToResetWith));
       } catch (error) {
         console.error("Error creating maze during reset:", error);
-        const fallbackMaze = createGeneratedMaze(
-          initialWidth,
-          initialHeight,
-          initialFactor,
-          initialStartX,
-          initialStartY,
-          initialGoalCenterX,
-          initialGoalCenterY
-        );
-        dispatch(Actions.resetSimulation(fallbackMaze));
       } finally {
         setIsInitializing(false);
       }
     },
-    [
-      clearSimulationTimer,
-      state.actualMaze?.width,
-      state.actualMaze?.height,
-      initialWidth,
-      initialHeight,
-      initialFactor,
-      initialStartX,
-      initialStartY,
-      initialGoalCenterX,
-      initialGoalCenterY,
-    ]
+    [clearSimulationTimer, mazeWidth, mazeHeight, wallsToRemoveFactor, startX, startY, goalCenterX, goalCenterY, dispatch]
   );
   useEffect(() => {
     handleReset();
-  }, [handleReset]);
-  useEffect(() => {
-    clearSimulationTimer();
-    if (state.simulationPhase !== SimulationPhase.IDLE && state.actualMaze) {
-      const stepFn = () => {
-        runSimulationStep(state, dispatch, state.actualMaze, speedRunPathIndexRef);
-      };
-      simulationTimerIdRef.current = setTimeout(stepFn, currentSimDelay);
-    }
-    return clearSimulationTimer;
-  }, [state, state.simulationPhase, currentSimDelay, clearSimulationTimer, dispatch]);
+  }, [mazeWidth, mazeHeight, wallsToRemoveFactor, startX, startY, goalCenterX, goalCenterY, handleReset]);
   const handleStartExploration = useCallback(() => {
-    if (state.simulationPhase !== SimulationPhase.IDLE || !state.knownMap) return;
+    if (state.simulationPhase !== SimulationPhase.IDLE || !state.knownMap || !state.visitedCells) {
+      console.warn("Cannot start exploration: Invalid state or missing map.");
+      return;
+    }
+    console.log("Starting exploration phase.");
     speedRunPathIndexRef.current = 0;
     dispatch(Actions.setSpeedRunPath(null));
     dispatch(Actions.setAbsoluteShortestPath(null));
-    const allKnownCells = getAllCoordStrings(state.knownMap);
-    const mapForExploration = calculateDistancesToGoal(state.knownMap, allKnownCells);
+    const mapForExploration = calculateDistancesToGoal(state.knownMap, state.visitedCells);
     dispatch(Actions.updateKnownMap(mapForExploration));
     dispatch(Actions.setSimulationPhase(SimulationPhase.EXPLORATION));
-  }, [state.simulationPhase, state.knownMap, dispatch]);
+  }, [state.simulationPhase, state.knownMap, state.visitedCells, dispatch]);
   const handleStartSpeedRun = useCallback(() => {
-    if (state.simulationPhase !== SimulationPhase.IDLE || !state.canStartSpeedRun || !state.knownMap || !state.visitedCells || !state.actualMaze) return;
-    const allActualCells = getAllCoordStrings(state.actualMaze);
-    const tempActualMap = calculateDistancesToGoal(cloneMaze(state.actualMaze), allActualCells);
-    const truePath = findShortestPath(tempActualMap);
-    if (truePath.length > 0 && truePath[0].x === tempActualMap.startCell.x && truePath[0].y === tempActualMap.startCell.y) {
-      dispatch(Actions.setAbsoluteShortestPath(truePath));
-    } else {
-      dispatch(Actions.setAbsoluteShortestPath(null));
-    }
-    const mapForPathfinding = calculateDistancesToGoal(cloneMaze(state.knownMap), state.visitedCells);
-    const robotPath = findShortestPath(mapForPathfinding);
-    const startPos = mapForPathfinding.startCell;
-    const isPathValid =
-      robotPath.length > 0 &&
-      robotPath[0].x === startPos.x &&
-      robotPath[0].y === startPos.y &&
-      mapForPathfinding.goalArea.some((g) => g.x === robotPath[robotPath.length - 1].x && g.y === robotPath[robotPath.length - 1].y);
-    if (!isPathValid) {
-      console.warn("Speed run path calculation failed or is invalid.");
-      dispatch(Actions.setCanStartSpeedRun(false));
-      dispatch(Actions.setAbsoluteShortestPath(null));
+    if (state.simulationPhase !== SimulationPhase.IDLE || !state.canStartSpeedRun || !state.knownMap || !state.visitedCells || !state.actualMaze) {
+      console.warn("Cannot start speed run: Conditions not met.");
       return;
     }
-    dispatch(Actions.updateRobotPosition({ ...startPos }));
+    console.log("Starting speed run phase.");
+    const { robotPath, absoluteShortestPath, isPathValid } = calculateAndValidateSpeedRunPath(state.knownMap, state.actualMaze, state.visitedCells);
+    dispatch(Actions.setAbsoluteShortestPath(absoluteShortestPath));
+    if (!isPathValid || !robotPath) {
+      console.warn("Speed run path calculation failed or path is invalid.");
+      dispatch(Actions.setCanStartSpeedRun(false));
+      dispatch(Actions.setSpeedRunPath(null));
+      return;
+    }
+    dispatch(Actions.updateRobotPosition({ ...state.knownMap.startCell }));
     dispatch(Actions.setSpeedRunPath(robotPath));
     speedRunPathIndexRef.current = 1;
     dispatch(Actions.setSimulationPhase(SimulationPhase.SPEED_RUN));
@@ -169,6 +129,5 @@ export function useSimulationCore({
     handleStartExploration,
     handleStartSpeedRun,
     handleReset,
-    setSimulationStepDelay,
   };
 }

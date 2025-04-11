@@ -20,12 +20,15 @@ export function runSimulationStep(
       runReturnStep(state, dispatch, actualMaze);
       break;
     case SimulationPhase.SPEED_RUN:
-      const nextIndex = runSpeedRunStep(state, dispatch, speedRunIndexRef.current);
-      speedRunIndexRef.current = nextIndex;
+      const nextIndex = runSpeedRunStep(state, dispatch, speedRunIndexRef.current ?? 0);
+      if (speedRunIndexRef.current !== null) {
+          speedRunIndexRef.current = nextIndex;
+      }
       break;
     case SimulationPhase.IDLE:
       break;
     default:
+      console.warn("runSimulationStep called with unknown phase:", state.simulationPhase);
       dispatch(setSimulationPhase(SimulationPhase.IDLE));
       break;
   }
