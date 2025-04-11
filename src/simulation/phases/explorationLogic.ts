@@ -34,7 +34,6 @@ function calculateDistancesToStart(map: Maze, allowedCells: Set<string>): Maze {
   mapCopy.goalArea = originalGoalArea;
   return mapCopy;
 }
-
 function findBestMove(currentMap: Maze, currentPos: Coordinates): Coordinates | null {
   const currentCell = currentMap.cells[currentPos.y]?.[currentPos.x];
   if (!currentCell || currentCell.distance === Infinity) return null;
@@ -85,7 +84,7 @@ export function runExplorationStep(state: SimulationState, dispatch: Dispatch<Si
     }
   } else {
     const allKnownCells = getAllCoordStrings(currentMapToUse);
-    let mapToRecalculate = calculateDistancesToGoal(currentMapToUse, allKnownCells);
+    const mapToRecalculate = calculateDistancesToGoal(currentMapToUse, allKnownCells);
     dispatch(updateKnownMap(mapToRecalculate));
     if (isExplorationComplete(mapToRecalculate, visitedCells)) {
       const speedRunPossible = canStartSpeedRun(mapToRecalculate, visitedCells);

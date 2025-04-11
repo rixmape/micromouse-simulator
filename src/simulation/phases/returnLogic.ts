@@ -79,7 +79,7 @@ export function runReturnStep(state: SimulationState, dispatch: Dispatch<Simulat
     }
   } else {
     const allKnownCells = getAllCoordStrings(currentMapToUse);
-    let mapToRecalculate = calculateDistancesToStart(currentMapToUse, allKnownCells);
+    const mapToRecalculate = calculateDistancesToStart(currentMapToUse, allKnownCells);
     dispatch(updateKnownMap(mapToRecalculate));
     const speedRunPossible = canStartSpeedRun(mapToRecalculate, visitedCells);
     dispatch(setCanStartSpeedRun(speedRunPossible));

@@ -62,7 +62,7 @@ export function useSimulationCore({ initialWidth, initialHeight, initialFactor }
       try {
         const mazeToResetWith = options || !state.actualMaze ? createGeneratedMaze(width, height, factor) : state.actualMaze;
         dispatch(Actions.resetSimulation(mazeToResetWith));
-      } catch (error) {
+      } catch {
         const fallbackMaze = createGeneratedMaze(initialWidth, initialHeight, initialFactor);
         dispatch(Actions.resetSimulation(fallbackMaze));
       } finally {
