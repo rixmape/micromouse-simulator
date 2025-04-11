@@ -1,4 +1,5 @@
 import React from "react";
+import { SimulationPhase } from "../types";
 
 interface SidebarProps {
   currentWidth: number;
@@ -9,7 +10,7 @@ interface SidebarProps {
   onHeightChange: (newHeight: number) => void;
   onWallsFactorChange: (newFactor: number) => void;
   onDelayChange: (newDelay: number) => void;
-  simulationPhase: string;
+  simulationPhase: SimulationPhase;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -23,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onDelayChange,
   simulationPhase,
 }) => {
-  const isDisabled = simulationPhase !== "IDLE";
+  const isDisabled = simulationPhase !== SimulationPhase.IDLE;
   const handleNumberChange = (event: React.ChangeEvent<HTMLInputElement>, callback: (value: number) => void) => {
     const value = parseInt(event.target.value, 10);
     if (!isNaN(value)) {
@@ -37,8 +38,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
   return (
-    <div className="w-64 p-4 space-y-4 border rounded-md shadow-md bg-gray-50">
-      <h2 className="text-xl font-semibold mb-4">Simulation Controls</h2>
+    <div className="w-full lg:w-64 p-4 space-y-4 border border-gray-300 rounded-md shadow-md bg-white">
+      <h2 className="text-xl font-semibold mb-4 text-gray-800">Simulation Controls</h2>
       <div className="space-y-1">
         <label htmlFor="mazeWidth" className="block text-sm font-medium text-gray-700">
           Maze Width: <span className="font-bold">{currentWidth}</span>
@@ -53,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           value={currentWidth}
           onChange={(e) => handleNumberChange(e, onWidthChange)}
           disabled={isDisabled}
-          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${isDisabled ? "cursor-not-allowed" : ""}`}
+          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${isDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-gray-300"}`}
         />
       </div>
       <div className="space-y-1">
@@ -70,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           value={currentHeight}
           onChange={(e) => handleNumberChange(e, onHeightChange)}
           disabled={isDisabled}
-          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${isDisabled ? "cursor-not-allowed" : ""}`}
+          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${isDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-gray-300"}`}
         />
       </div>
       <div className="space-y-1">
@@ -87,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           value={currentWallsFactor}
           onChange={(e) => handleFloatChange(e, onWallsFactorChange)}
           disabled={isDisabled}
-          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${isDisabled ? "cursor-not-allowed" : ""}`}
+          className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${isDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-gray-300"}`}
         />
       </div>
       <div className="space-y-1">
@@ -103,11 +104,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           step="1"
           value={currentDelay}
           onChange={(e) => handleNumberChange(e, onDelayChange)}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer hover:bg-gray-300"
         />
       </div>
-      <p className="text-xs text-gray-500 mt-4">Note: Changing Width, Height, or Extra Paths will reset the simulation.</p>
+      <p className="text-xs text-gray-500 pt-2">Note: Changing Width, Height, or Extra Paths will reset the simulation.</p>
     </div>
   );
 };
+
 export default React.memo(Sidebar);

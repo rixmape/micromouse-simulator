@@ -1,6 +1,7 @@
 import React from "react";
-import { coordsToString } from "../lib/mazeUtils";
-import { Cell, Coordinates, Direction, Maze } from "../types";
+import { coordsToString } from "../lib/mazeUtils/coordinateUtils";
+import type { Cell, Coordinates, Maze } from "../types";
+import { Direction } from "../types";
 
 interface MazeGridProps {
   maze: Maze | null;
@@ -12,7 +13,7 @@ interface MazeGridProps {
 
 const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, speedRunPath, absoluteShortestPath }) => {
   if (!maze) {
-    return <div>Loading Maze...</div>;
+    return <div className="w-96 h-96 bg-gray-200 flex items-center justify-center text-gray-500">Loading Maze...</div>;
   }
   const { width, height, cells, startCell, goalArea } = maze;
   const isGoalCell = (x: number, y: number): boolean => {
@@ -54,10 +55,10 @@ const MazeGrid: React.FC<MazeGridProps> = ({ maze, robotPosition, visitedCells, 
                 return (
                   <div
                     key={`cell-empty-${x}-${y}`}
-                    className="w-6 h-6 bg-pink-200 flex items-center justify-center text-xs font-bold"
-                    title={`Invalid Cell Data (${x},${y})`}
+                    className="w-6 h-6 bg-pink-100 border border-dashed border-pink-400 flex items-center justify-center text-xs font-bold text-pink-600"
+                    title={`Invalid Cell (${x},${y})`}
                   >
-                    ?
+                    !
                   </div>
                 );
               }
